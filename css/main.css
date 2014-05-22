@@ -1,0 +1,28 @@
+* {
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+html, body {
+    width: 90%;
+    height: 100%;
+    /*overflow: hidden;*/
+    background: #000;
+}
+
+.game {
+    width: 1000px;
+    height: 620px;
+    margin: 20px auto;
+}
+
+#drone-editor {
+    position: absolute;
+    height: 580px;
+    width: 960px;
+    display: none;
+    background-color: gray;
+    margin-left: 20px;
+    margin-top: 20px;
+    z-index: 1000;
+}
