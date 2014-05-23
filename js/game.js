@@ -35,19 +35,12 @@
     Game.prototype = {
         world: null,
         create: function () {
+            Tests.doTests();
+
             game.world.setBounds(-10000000, -10000000, 20000000, 20000000);
             this.cursors = game.input.keyboard.createCursorKeys();
 
-            for (var i = 0; i < 1000; ++i) {
-                var col = [];
-                for (var j = 0; j < 1000; ++j) {
-                    col.push({
-                        tileID: 0,
-                        tileContent: 0
-                    });
-                }
-                map.push(col);
-            }
+            map = WorldGenerator.makeEmptyMap(1000, 1000);
 
             WorldGenerator.teraform(map);
 
@@ -63,7 +56,7 @@
             }
 
             var i;
-            for (i = 0; map[500][i].tileID != game.tileIndexByName.grass; ++i);
+            for (i = 0; map.getTile(500, i).tileIDName !== 'grass'; ++i);
             i--;
 
             camera.y = i - 20;
@@ -94,17 +87,15 @@
                 camera.x += 1;
             }
             //Update view
+            var tile = {};
             var right = Math.ceil(game.width / 16);
             var bottom = Math.ceil(game.height / 16);
             for (var i = 0; i < right; ++i) {
                 for (var j = 0; j < bottom; ++j) {
                     var tileX = i + camera.x;
                     var tileY = j + camera.y;
-                    if (tileX < 0 || tileY < 0 || tileX >= map.length || tileY >= map[0].length) {
-                        grid[i][j].frame = game.tileIndexByName.sky;
-                    } else {
-                        grid[i][j].frame = map[tileX][tileY].tileID;
-                    }
+                    map.getTile(tileX, tileY, tile);
+                    grid[i][j].frame = tile.tileID;
                 }
             }
             graphics.clear();
@@ -117,12 +108,12 @@
                 for (var j = 1; j < bottom; ++j) {
                     var tileX = i + camera.x;
                     var tileY = j + camera.y;
-                    if (map[tileX][tileY].tileContent === game.tileIndexByName.sky) {
-                        if (map[tileX - 1][tileY].tileContent !== game.tileIndexByName.sky) {
+                    if (map.getTile(tileX, tileY, tile).tileContentName === 'sky') {
+                        if (map.getTile(tileX - 1, tileY, tile).tileContentName !== 'sky') {
                             graphics.moveTo(i * 16, j * 16);
                             graphics.lineTo(i * 16, j * 16 + 16);
                         }
-                        if (map[tileX][tileY - 1].tileContent !== game.tileIndexByName.sky) {
+                        if (map.getTile(tileX, tileY - 1, tile).tileContentName !== 'sky') {
                             graphics.moveTo(i * 16, j * 16);
                             graphics.lineTo(i * 16 + 16, j * 16);
                         }

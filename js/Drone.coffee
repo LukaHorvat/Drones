@@ -2,52 +2,55 @@ do ->
     class Drone
         constructor: (map) ->
             @map = map;
-            @sprite = game.add.sprite(0, 0, 'drone')
-            @sprite.anchor.set(0.5);
             @name = NameGenerator.generate()
+            @sprite = game.add.sprite(8, 8, 'drone')
+            @sprite.anchor.set(0.5);
             @sprite.inputEnabled = true
             @sprite.events.onInputUp.add () ->
                 return true
             , true
+            @energy = 0
+            @instructions = []
+            @code = ''
+            @direction = 
+                x: 0
+                y: -1
+            @memory = {}
 
-        tick: () ->
-            return this.execute()
+        tick: () => @execute()
 
-        execute: () ->
+        execute: () =>
             action = {}
             for inst in @instructions
                 inst.execute action, this, @map
             if 'digTile' of action
-                @map[action.digTile.x][action.digTile.y].tileID = game.tileIndexByName.stoneBackground
-                @map[action.digTile.x][action.digTile.y].tileContent = game.tileIndexByName.sky
+                @map.setTile action.digTile.x, action.digTile.y, 
+                    tileIDName: 'stoneBackground'
+                    tileContentName: 'sky'
             if 'rotate' of action
-                if action.rotate.direction is 'cw'
-                    @sprite.rotation += Math.PI / 2;
-                    [@direction.x, @direction.y] = [-@direction.y, @direction.x]
-                else if action.rotate.direction is 'ccw'
-                    @sprite.rotation -= Math.PI / 2;
-                    [@direction.x, @direction.y] = [@direction.y, -@direction.x]
+                @rotate action.rotate.direction
             if 'move' of action
                 @x = action.move.x
                 @y = action.move.y
 
-        addInstruction: (inst) ->
-            @instructions.push inst
+        loadCode: (code) =>
+            @instructions = CodeParser.compileCode code
+            @code = code
 
-        destroy: () ->
+        destroy: () =>
             sprite.destroy()
 
-        energy: 0
-
-        instructions: []
-
-        sprite: null
-
-        direction: { x: 0, y: -1 }
-
-        memory: {}
-
-        name: "drone"
+        rotate: (direction) =>
+            if direction is 'cw'
+                @sprite.rotation += Math.PI / 2;
+                @direction =
+                    x: -@direction.y
+                    y: @direction.x
+            else if direction is 'ccw'
+                @sprite.rotation -= Math.PI / 2;
+                @direction =
+                    x: @direction.y
+                    y: -@direction.x
 
         @property 'x',
             get: () -> (@sprite.x - 8) / 16
