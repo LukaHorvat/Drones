@@ -18,7 +18,7 @@
           drone.energy = 10000000;
         }
         if (__indexOf.call(options.special, 'test') >= 0) {
-          drone.instructions = CodeParser.testInstructions;
+          drone.loadCode(CodeParser.testCode);
         }
       }
       this.entities.push(drone);

@@ -12,7 +12,7 @@
     NameGenerator.generate = function() {
       var adj, noun;
       adj = this.adjectives[Math.floor(Math.random() * this.adjectives.length)];
-      noun = this.adjectives[Math.floor(Math.random() * this.adjectives.length)];
+      noun = this.nouns[Math.floor(Math.random() * this.nouns.length)];
       return "" + adj + " " + noun;
     };
 

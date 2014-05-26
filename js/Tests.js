@@ -84,6 +84,19 @@
         this.expectEquality(2, drone.x, 'x coordinate');
         return this.expectEquality(2, drone.y, 'y coordinate');
       });
+      test('Modules', function() {
+        var code, drone, i, map, _i;
+        code = 'module rotate_ccw\n    increment count\n    rotate ccw\n    if memory count is 2\n        set count 0\n        set_module go_left\nmodule go_left\n    increment count\n    dig forward\n    if memory count is 4\n        set count 0\n        set_module rotate_cw\nmodule rotate_cw\n    increment count\n    rotate cw\n    if memory count is 2\n        set count 0\n        set_module go_right\nmodule go_right\n    increment count\n    dig forward\n    if memory count is 5\n        set count 0\n        set_module none\nset_module rotate_ccw';
+        map = WorldGenerator.makeEmptyMap(5, 1);
+        drone = new Drone(map);
+        drone.loadCode(code);
+        drone.rotate('cw');
+        drone.x = 4;
+        for (i = _i = 1; _i <= 14; i = ++_i) {
+          drone.tick();
+        }
+        return this.expectEquality(5, drone.x, 'x coordinate');
+      });
       return test('Looking forward', function() {
         var code, drone, i, map, _i;
         code = 'if see dirt\n    increment count\nincrement step\nif memory step is 1\n    rotate ccw\nif memory step is 2\n    dig forward\nif memory step is 3\n    rotate cw\nif memory step is 4\n    dig forward\nif memory step is 5\n    rotate cw';

@@ -8,6 +8,8 @@
       function Drone(map) {
         this.rotate = __bind(this.rotate, this);
         this.destroy = __bind(this.destroy, this);
+        this.setModule = __bind(this.setModule, this);
+        this.loadModule = __bind(this.loadModule, this);
         this.loadCode = __bind(this.loadCode, this);
         this.execute = __bind(this.execute, this);
         this.tick = __bind(this.tick, this);
@@ -27,6 +29,8 @@
           y: -1
         };
         this.memory = {};
+        this.modules = {};
+        this.setModule = 'none';
       }
 
       Drone.prototype.tick = function() {
@@ -34,11 +38,15 @@
       };
 
       Drone.prototype.execute = function() {
-        var action, inst, _i, _len, _ref;
+        var action, inst, instructions, _i, _len;
+        if (this.setModule !== 'none') {
+          instructions = this.modules[this.setModule].instructions;
+        } else {
+          return;
+        }
         action = {};
-        _ref = this.instructions;
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          inst = _ref[_i];
+        for (_i = 0, _len = instructions.length; _i < _len; _i++) {
+          inst = instructions[_i];
           inst.execute(action, this, this.map);
         }
         if ('digTile' in action) {
@@ -57,8 +65,22 @@
       };
 
       Drone.prototype.loadCode = function(code) {
-        this.instructions = CodeParser.compileCode(code);
-        return this.code = code;
+        var module;
+        module = {
+          code: code,
+          name: 'immediate',
+          instructions: CodeParser.compileCode(code)
+        };
+        this.setModule = module.name;
+        return this.modules[module.name] = module;
+      };
+
+      Drone.prototype.loadModule = function(module) {
+        return this.modules[module.name] = module;
+      };
+
+      Drone.prototype.setModule = function(name) {
+        return this.setModule = name;
       };
 
       Drone.prototype.destroy = function() {

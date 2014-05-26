@@ -100,6 +100,45 @@ class Tests
             @expectEquality 2, drone.x, 'x coordinate'
             @expectEquality 2, drone.y, 'y coordinate'
 
+        test 'Modules', ->
+            code = '''
+            module rotate_ccw
+                increment count
+                rotate ccw
+                if memory count is 2
+                    set count 0
+                    set_module go_left
+            module go_left
+                increment count
+                dig forward
+                if memory count is 4
+                    set count 0
+                    set_module rotate_cw
+            module rotate_cw
+                increment count
+                rotate cw
+                if memory count is 2
+                    set count 0
+                    set_module go_right
+            module go_right
+                increment count
+                dig forward
+                if memory count is 5
+                    set count 0
+                    set_module none
+            set_module rotate_ccw
+            '''
+
+            map = WorldGenerator.makeEmptyMap 5, 1
+            drone = new Drone(map)
+            drone.loadCode code
+            drone.rotate 'cw'
+            drone.x = 4
+            for i in [1..14]
+                drone.tick()
+
+            @expectEquality 5, drone.x, 'x coordinate'
+
         test 'Looking forward', ->
             code = '''
             if see dirt
@@ -117,7 +156,7 @@ class Tests
                 rotate cw
             '''
 
-            map = WorldGenerator.makeEmptyMap(3, 3)
+            map = WorldGenerator.makeEmptyMap 3, 3
             map.setTile 1, 0, 
                 tileIDName: 'dirt'
                 tileContentName: 'dirt'

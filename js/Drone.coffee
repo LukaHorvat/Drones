@@ -16,12 +16,17 @@ do ->
                 x: 0
                 y: -1
             @memory = {}
+            @modules = {}
+            @setModule = 'none'
 
         tick: () => @execute()
 
         execute: () =>
+            unless @setModule is 'none'
+                instructions = @modules[@setModule].instructions
+            else return
             action = {}
-            for inst in @instructions
+            for inst in instructions
                 inst.execute action, this, @map
             if 'digTile' of action
                 @map.setTile action.digTile.x, action.digTile.y, 
@@ -34,8 +39,18 @@ do ->
                 @y = action.move.y
 
         loadCode: (code) =>
-            @instructions = CodeParser.compileCode code
-            @code = code
+            module = 
+                code: code
+                name: 'immediate'
+                instructions: CodeParser.compileCode code
+            @setModule = module.name
+            @modules[module.name] = module
+
+        loadModule: (module) =>
+            @modules[module.name] = module
+
+        setModule: (name) =>
+            @setModule = name
 
         destroy: () =>
             sprite.destroy()

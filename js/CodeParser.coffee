@@ -18,20 +18,37 @@ class CodeParser
                 words = line.split ' '
                 if words[0] is 'if'
                     output.push
+                        type: 'conditional'
                         cond: words.slice(1).join ' '
+                        code: line
+                else if words[0] is 'module'
+                    output.push
+                        type: 'module declaration'
+                        name: words[1]
+                        code: line
                 else
                     output.push
+                        type: 'command'
                         action: line
+                        code: line
         if indent
             subexp = lines.slice(indentStart, i).join '\n'
             output[output.length - 1].instructions = @buildAst subexp
         return output
 
+    @reconstructCode: (ast, tabs) =>
+        code = ''
+        tabs = tabs || ''
+        for node in ast
+            code += tabs + node.code + '\n'
+            if node.type in ['conditional', 'module declaration']
+                code += @reconstructCode node.instructions, (tabs + '\t')
+
     @makeInstructions: (ast) =>
         processed = []
         for node in ast
             inst = {}
-            if node.cond #Conditions
+            if node.type is 'conditional'
                 instructions = @makeInstructions node.instructions
                 cond = node.cond.split ' '
                 do (instructions, cond) ->
@@ -63,74 +80,86 @@ class CodeParser
                                             subInstruction.execute action, drone, map
                     else
                         throw "Unsupported condition #{cond[0]}"
-            else #Actions
+            else if node.type is 'module declaration'
+                instructions = @makeInstructions node.instructions
+                module =
+                    name: node.name
+                    code: @reconstructCode node.instructions
+                    instructions: instructions
+                do (module) ->
+                    inst.execute = (action, drone, map) ->
+                        drone.loadModule module
+            else if node.type is 'command'
                 action = node.action.split ' '
-                if action[0] is 'dig'
-                    direction = action[1]
-                    do (direction) ->
-                        inst.execute = (action, drone, map) ->
-                            targetCoords = { x: 0, y: 0 }
-                            if direction is 'forward'
-                                targetCoords = 
-                                    x: drone.x + drone.direction.x
-                                    y: drone.y + drone.direction.y
-                            action.digTile = targetCoords
-                            action.move = targetCoords
-                else if action[0] is 'rotate'
-                    direction = action[1]
-                    do (direction) ->
-                        inst.execute = (action, drone, map) ->
-                            action.rotate =
-                                direction: direction
-                else if action[0] is 'increment'
-                    name = action[1]
-                    do (name) ->
-                        inst.execute = (action, drone, map) ->
-                            drone.memory[name] = 0 unless drone.memory[name]?
-                            drone.memory[name]++
-                else if action[0] is 'decrement'
-                    name = action[1]
-                    do (name) ->
-                        inst.execute = (action, drone, map) ->
-                            drone.memory[name] = 0 unless drone.memory[name]?
-                            drone.memory[name]--
-                else if action[0] in ['set', 'add', 'mult', 'sub', 'div']
-                    name = action[1]
-                    value = action[2]
-                    do (value) ->
-                        getValue = null
-                        unless isNaN value
-                            value = +value
-                            getValue = -> value
+                switch action[0]
+                    when 'dig'
+                        direction = action[1]
+                        do (direction) ->
+                            inst.execute = (action, drone, map) ->
+                                targetCoords = { x: 0, y: 0 }
+                                if direction is 'forward'
+                                    targetCoords = 
+                                        x: drone.x + drone.direction.x
+                                        y: drone.y + drone.direction.y
+                                action.digTile = targetCoords
+                                action.move = targetCoords
+                    when 'rotate'
+                        direction = action[1]
+                        do (direction) ->
+                            inst.execute = (action, drone, map) ->
+                                action.rotate =
+                                    direction: direction
+                    when 'increment'
+                        name = action[1]
+                        do (name) ->
+                            inst.execute = (action, drone, map) ->
+                                drone.memory[name] = 0 unless drone.memory[name]?
+                                drone.memory[name]++
+                    when 'decrement'
+                        name = action[1]
+                        do (name) ->
+                            inst.execute = (action, drone, map) ->
+                                drone.memory[name] = 0 unless drone.memory[name]?
+                                drone.memory[name]--
+                    when 'set_module'
+                        name = action[1]
+                        do (name) ->
+                            inst.execute = (action, drone, map) ->
+                                drone.setModule = name
+                    when 'debug'
+                        js = action.slice(1).join ' '
+                        do (js) ->
+                            inst.execute = (action, drone, map) ->
+                                for prop, value of drone.memory
+                                    js = "var #{prop} = #{value};" + js
+                                fn = Function js
+                                fn()
+                    else
+                        if action[0] in ['set', 'add', 'mult', 'sub', 'div']
+                            name = action[1]
+                            value = action[2]
+                            operator = {
+                                set: ''
+                                add: '+'
+                                mult: '*'
+                                sub: '-'
+                                div: '/'
+                            }[action[0]]
+                            do (value, operator) ->
+                                getValue = null
+                                unless isNaN value
+                                    value = +value
+                                    getValue = -> value
+                                else
+                                    getValue = (memory) -> memory[value] || 0
+                                do (name, getValue) ->
+                                    eval """
+                                    inst.execute = function (action, drone, map) {
+                                        drone.memory[name] #{operator}= getValue(drone.memory);
+                                    }
+                                    """
                         else
-                            getValue = (memory) -> memory[value] || 0
-                        do (name, getValue) ->
-                            switch action[0]
-                                when 'set'
-                                    inst.execute = (action, drone, map) ->
-                                        drone.memory[name] = getValue drone.memory
-                                when 'add'
-                                    inst.execute = (action, drone, map) ->
-                                        drone.memory[name] += getValue drone.memory
-                                when 'mult'
-                                    inst.execute = (action, drone, map) ->
-                                        drone.memory[name] *= getValue drone.memory
-                                when 'sub'
-                                    inst.execute = (action, drone, map) ->
-                                        drone.memory[name] -= getValue drone.memory
-                                when 'div'
-                                    inst.execute = (action, drone, map) ->
-                                        drone.memory[name] /= getValue drone.memory
-                else if action[0] is 'debug'
-                    js = action.slice(1).join ' '
-                    do (js) ->
-                        inst.execute = (action, drone, map) ->
-                            for prop, value of drone.memory
-                                js = "var #{prop} = #{value};" + js
-                            fn = Function js
-                            fn()
-                else
-                    throw "Unsuported command #{action[0]}"
+                            throw "Unsuported command #{action[0]}"
             processed.push inst
         return processed
 
@@ -139,7 +168,7 @@ class CodeParser
 
 window.CodeParser = CodeParser;
 
-testCode = '''
+CodeParser.testCode = '''
 set sawDirt 0
 if see dirt
     dig forward
@@ -152,10 +181,6 @@ if memory sawDirt not 1
         dig forward
         set count 0
 '''
-
-testAst = CodeParser.buildAst testCode
-
-CodeParser.testInstructions = CodeParser.makeInstructions(testAst)
 
 ###
 Language docs

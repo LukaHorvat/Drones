@@ -8,7 +8,7 @@ class World
             if 'unlimited energy' in options.special
                 drone.energy = 10000000
             if 'test' in options.special
-                drone.instructions = CodeParser.testInstructions
+                drone.loadCode CodeParser.testCode
         @entities.push drone
         drone.x = x
         drone.y = y
