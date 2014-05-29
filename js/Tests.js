@@ -36,14 +36,28 @@
 
     Tests.doTests = function() {
       test('Extensions', function() {
-        var f, g;
+        var arr, arr2, f, g;
         f = function(x) {
           return x * 2;
         };
         g = function(x) {
           return x + 2;
         };
-        return this.expectEquality(f(g(5)), (f.compose(g))(5), 'composition with argument 5');
+        this.expectEquality(f(g(5)), (f.compose(g))(5), 'composition with argument 5');
+        arr = ['apple', 'orange', 'pear'];
+        arr.sortByValue(function(el) {
+          return {
+            apple: 2,
+            orange: 1,
+            pear: 3
+          }[el];
+        });
+        this.expectEquality('orange', arr[0], 'first element');
+        this.expectEquality('apple', arr[1], 'second element');
+        arr2 = ['one', 'two', 'one', 'three'];
+        arr2.remove('one');
+        this.expectEquality('two', arr2[0], 'first element');
+        return this.expectEquality('three', arr2[1], 'second element');
       });
       test('Parsing into AST', function() {
         var ast, code;
@@ -71,46 +85,44 @@
         return this.expectEquality(5, drone.memory.a, 'add, mult, sub and div');
       });
       test('Drone movement', function() {
-        var code, drone, i, map, _i;
+        var code, drone, i, map, world, _i;
         code = 'increment step\nif memory step is 1\n    dig forward\nif memory step is 2\n    rotate cw\nif memory step is 3\n    rotate cw\nif memory step is 4\n    dig forward\nif memory step is 5\n    dig forward\nif memory step is 6\n    rotate ccw\nif memory step is 7\n    dig forward';
         map = WorldGenerator.makeEmptyMap(3, 3);
-        drone = new Drone(map);
-        drone.x = 1;
-        drone.y = 1;
+        world = new World(map);
+        drone = world.addDrone(1, 1);
         drone.loadCode(code);
         for (i = _i = 1; _i <= 7; i = ++_i) {
-          drone.tick();
+          world.tick();
         }
         this.expectEquality(2, drone.x, 'x coordinate');
         return this.expectEquality(2, drone.y, 'y coordinate');
       });
       test('Modules', function() {
-        var code, drone, i, map, _i;
+        var code, drone, i, map, world, _i;
         code = 'module rotate_ccw\n    increment count\n    rotate ccw\n    if memory count is 2\n        set count 0\n        set_module go_left\nmodule go_left\n    increment count\n    dig forward\n    if memory count is 4\n        set count 0\n        set_module rotate_cw\nmodule rotate_cw\n    increment count\n    rotate cw\n    if memory count is 2\n        set count 0\n        set_module go_right\nmodule go_right\n    increment count\n    dig forward\n    if memory count is 5\n        set count 0\n        set_module none\nset_module rotate_ccw';
-        map = WorldGenerator.makeEmptyMap(5, 1);
-        drone = new Drone(map);
+        map = WorldGenerator.makeEmptyMap(6, 1);
+        world = new World(map);
+        drone = world.addDrone(4, 0);
         drone.loadCode(code);
         drone.rotate('cw');
-        drone.x = 4;
         for (i = _i = 1; _i <= 14; i = ++_i) {
-          drone.tick();
+          world.tick();
         }
         return this.expectEquality(5, drone.x, 'x coordinate');
       });
       return test('Looking forward', function() {
-        var code, drone, i, map, _i;
+        var code, drone, i, map, world, _i;
         code = 'if see dirt\n    increment count\nincrement step\nif memory step is 1\n    rotate ccw\nif memory step is 2\n    dig forward\nif memory step is 3\n    rotate cw\nif memory step is 4\n    dig forward\nif memory step is 5\n    rotate cw';
         map = WorldGenerator.makeEmptyMap(3, 3);
         map.setTile(1, 0, {
           tileIDName: 'dirt',
           tileContentName: 'dirt'
         });
-        drone = new Drone(map);
-        drone.x = 1;
-        drone.y = 1;
+        world = new World(map);
+        drone = world.addDrone(1, 1);
         drone.loadCode(code);
         for (i = _i = 1; _i <= 6; i = ++_i) {
-          drone.tick();
+          world.tick();
         }
         return this.expectEquality(2, drone.memory.count, 'dirt sightings');
       });
@@ -123,3 +135,5 @@
   window.Tests = Tests;
 
 }).call(this);
+
+//# sourceMappingURL=Tests.map

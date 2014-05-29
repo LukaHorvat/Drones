@@ -5,6 +5,7 @@
     var grid = [];
     var camera = {};
     var graphics;
+    var inputs = [];
     
     Function.prototype.property = function(prop, desc) {
       return Object.defineProperty(this.prototype, prop, desc);
@@ -67,7 +68,11 @@
 
             game.time.advancedTiming = true;
 
-            game.time.events.repeat(200, 100, this.world.tick, this.world);
+            var world = this.world;
+            game.time.events.repeat(200, 100, function () {
+                world.tick(inputs);
+                inputs = [];
+            }, this.world);
 
             graphics = game.add.graphics(0, 0);
             graphics.fixedToCamera = true;
@@ -118,6 +123,13 @@
                             graphics.lineTo(i * 16 + 16, j * 16);
                         }
                     }
+                }
+            }
+
+            //Register inputs
+            for (var i = 0; i < 300; ++i) {
+                if (game.input.keyboard.isDown(i)) {
+                    inputs.push(i);
                 }
             }
         },

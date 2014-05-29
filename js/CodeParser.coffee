@@ -42,7 +42,7 @@ class CodeParser
         for node in ast
             code += tabs + node.code + '\n'
             if node.type in ['conditional', 'module declaration']
-                code += @reconstructCode node.instructions, (tabs + '\t')
+                code += @reconstructCode node.instructions, (tabs + '    ')
 
     @makeInstructions: (ast) =>
         processed = []
@@ -52,34 +52,41 @@ class CodeParser
                 instructions = @makeInstructions node.instructions
                 cond = node.cond.split ' '
                 do (instructions, cond) ->
-                    if cond[0] is 'see'
-                        inst.execute = (action, drone, map) ->
-                            seenTile = map.getTile drone.x + drone.direction.x, drone.y + drone.direction.y
-                            if seenTile.tileContentName is cond[1]
+                    conditionFn = null
+                    switch cond[0]
+                        when 'see'
+                            conditionFn = (action, drone, map) ->
+                                seenTile = map.getTile drone.x + drone.direction.x, drone.y + drone.direction.y
+                                return seenTile.tileContentName is cond[1]
+                        when 'memory'
+                            name = cond[1]
+                            operator = cond[2]
+                            value = cond[3]
+                            do (value) ->
+                                getValue = null
+                                unless isNaN value
+                                    value = +value
+                                    getValue = -> value
+                                else
+                                    getValue = (memory) -> memory[value] || 0
+                                do (name, operator, getValue) ->
+                                    conditionFn = (action, drone, map) ->
+                                        val = getValue drone.memory
+                                        return (operator is 'not' and drone.memory[name] isnt val) or
+                                        (operator is 'is' and drone.memory[name] is val)
+
+                        when 'input'
+                            key = cond[1]
+                            do (key) ->
+                                conditionFn = (action, drone, map, inputs) ->
+                                    inputs.some (inp) -> inp == Phaser.Keyboard[key]
+                        else
+                            throw "Unsupported condition #{cond[0]}"
+                    do (conditionFn) ->
+                        inst.execute = (action, drone, map, inputs) ->
+                            if conditionFn action, drone, map, inputs
                                 for subInstruction in instructions
                                     subInstruction.execute action, drone, map
-                    else if cond[0] is 'memory'
-                        name = cond[1]
-                        operator = cond[2]
-                        value = cond[3]
-                        do (value) ->
-                            getValue = null
-                            unless isNaN value
-                                value = +value
-                                getValue = -> value
-                            else
-                                getValue = (memory) -> memory[value] || 0
-                            do (name, operator, getValue) ->
-                                inst.execute = (action, drone, map) ->
-                                    val = getValue drone.memory
-                                    if operator is 'not' and drone.memory[name] isnt val
-                                        for subInstruction in instructions
-                                            subInstruction.execute action, drone, map
-                                    if operator is 'is' and drone.memory[name] is val
-                                        for subInstruction in instructions
-                                            subInstruction.execute action, drone, map
-                    else
-                        throw "Unsupported condition #{cond[0]}"
             else if node.type is 'module declaration'
                 instructions = @makeInstructions node.instructions
                 module =
@@ -125,7 +132,12 @@ class CodeParser
                         name = action[1]
                         do (name) ->
                             inst.execute = (action, drone, map) ->
-                                drone.setModule = name
+                                drone.activeModule = name
+                    when 'send_module'
+                        name = action[1]
+                        do (name) ->
+                            inst.execute = (action, drone, map) ->
+                                action.sendModule = name
                     when 'debug'
                         js = action.slice(1).join ' '
                         do (js) ->
@@ -169,17 +181,12 @@ class CodeParser
 window.CodeParser = CodeParser;
 
 CodeParser.testCode = '''
-set sawDirt 0
-if see dirt
-    dig forward
-    set sawDirt 1
-    set count 0
-if memory sawDirt not 1
-    increment count
+if input A
+    rotate ccw
+if input D
     rotate cw
-    if memory count is 4
-        dig forward
-        set count 0
+if input W
+    dig forward
 '''
 
 ###

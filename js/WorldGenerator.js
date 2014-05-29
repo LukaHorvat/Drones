@@ -7,38 +7,48 @@
                 for (var j = 0; j < height; ++j) {
                     col.push({
                         tileID: 0,
-                        tileContent: 0
+                        tileContent: 0,
+                        entities: []
                     });
                 }
                 map.push(col);
             }
+            var emptyTile = {
+                tileID: 0,
+                tileContent: 0,
+                entities: []
+            };
+            var getTileState = function (tile, obj) {
+                obj = obj || {};
+                //Copy data
+                obj.tileID = tile.tileID;
+                obj.tileContent = tile.tileContent;
+                //Generate friendly names
+                obj.tileIDName = game.tileNameByIndex[obj.tileID];
+                obj.tileContentName = game.tileNameByIndex[obj.tileContent];
+                return obj;
+            };
             return {
                 _data: map,
                 getTile: function (x, y, obj) {
                     obj = obj || {};
-                    if (!this.isInBounds(x, y)) {
-                        obj.tileIDName = 'sky';
-                        obj.tileID = 0;
-                        obj.tileContent = 0;
-                        obj.tileContentName = 'sky';
-                    } else {
-                        obj.tileIDName = game.tileNameByIndex[this._data[x][y].tileID];
-                        obj.tileID = this._data[x][y].tileID;
-                        obj.tileContentName = game.tileNameByIndex[this._data[x][y].tileContent];
-                        obj.tileContent = this._data[x][y].tileContent;
-                    }
+                    if (!this.isInBounds(x, y)) getTileState(emptyTile, obj);
+                    else getTileState(this._data[x][y], obj);
                     return obj;
                 },
-                setTile: function (x, y, object) {
+                setTile: function (x, y, obj) {
                     if (!this.isInBounds(x, y)) return;
-                    if (object.tileID != null) this._data[x][y].tileID = object.tileID;
-                    if (object.tileContent != null) this._data[x][y].tileContent = object.tileContent;
-                    if (object.tileIDName != null) {
-                        this._data[x][y].tileID = game.tileIndexByName[object.tileIDName];
+                    if (obj.tileID != null) this._data[x][y].tileID = obj.tileID;
+                    if (obj.tileContent != null) this._data[x][y].tileContent = obj.tileContent;
+                    if (obj.tileIDName != null) {
+                        this._data[x][y].tileID = game.tileIndexByName[obj.tileIDName];
                     }
-                    if (object.tileContentName != null) {
-                        this._data[x][y].tileContent = game.tileIndexByName[object.tileContentName];
+                    if (obj.tileContentName != null) {
+                        this._data[x][y].tileContent = game.tileIndexByName[obj.tileContentName];
                     }
+                },
+                getEntitiesList: function (x, y) {
+                    return this._data[x][y].entities;
                 },
                 isInBounds: function (x, y) {
                     return !(x < 0 || x >= this._data.length || y < 0 || y >= this._data[0].length);

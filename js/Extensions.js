@@ -2,18 +2,62 @@
 (function() {
   var __slice = [].slice;
 
-  Function.prototype.compose = function(g) {
-    var comp, f;
-    f = this;
-    comp = null;
-    (function(f) {
-      return comp = function() {
-        var args;
-        args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-        return f(g.apply(null, args));
-      };
-    })(f);
-    return comp;
-  };
+  Object.defineProperty(Function.prototype, 'compose', {
+    configurable: false,
+    enumerable: false,
+    writable: false,
+    value: function(g) {
+      var comp, f;
+      f = this;
+      comp = null;
+      (function(f) {
+        return comp = function() {
+          var args;
+          args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+          return f(g.apply(null, args));
+        };
+      })(f);
+      return comp;
+    }
+  });
+
+  Object.defineProperty(Array.prototype, 'sortByValue', {
+    configurable: false,
+    enumerable: false,
+    writable: false,
+    value: function(fn) {
+      var arr;
+      arr = this;
+      return (function(arr) {
+        return arr.sort(function(a, b) {
+          return (fn(a)) - (fn(b));
+        });
+      })(arr);
+    }
+  });
+
+  Object.defineProperty(Array.prototype, 'remove', {
+    configurable: false,
+    enumerable: false,
+    writable: false,
+    value: function(x) {
+      var arr;
+      arr = this;
+      return (function(arr) {
+        var i, _i, _ref, _results;
+        _results = [];
+        for (i = _i = _ref = arr.length - 1; _i >= 0; i = _i += -1) {
+          if (arr[i] === x) {
+            _results.push(arr.splice(i, 1));
+          } else {
+            _results.push(void 0);
+          }
+        }
+        return _results;
+      })(arr);
+    }
+  });
 
 }).call(this);
+
+//# sourceMappingURL=Extensions.map

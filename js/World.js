@@ -5,10 +5,16 @@
 
   World = (function() {
     function World(map) {
+      var action, i, orderedActions, _i, _len;
       this.map = map;
+      this.actionPrecedence = {};
+      this.entities = [];
+      orderedActions = ['rotate', 'sendModule', 'setModule', 'digTile', 'move'];
+      for (i = _i = 0, _len = orderedActions.length; _i < _len; i = ++_i) {
+        action = orderedActions[i];
+        this.actionPrecedence[action] = i;
+      }
     }
-
-    World.prototype.entities = [];
 
     World.prototype.addDrone = function(x, y, options) {
       var drone;
@@ -23,21 +29,84 @@
       }
       this.entities.push(drone);
       drone.x = x;
-      return drone.y = y;
+      drone.y = y;
+      return drone;
     };
 
-    World.prototype.tick = function() {
-      var entity, _i, _len, _ref, _results;
+    World.prototype.tick = function(inputs) {
+      var action, actionAtoms, actionList, atom, drone, entity, prop, tile, value, _i, _j, _len, _len1, _ref, _results;
+      actionList = [];
       _ref = this.entities;
-      _results = [];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         entity = _ref[_i];
-        _results.push(entity.tick());
+        entity.tick(actionList, inputs);
+      }
+      actionAtoms = [].concat.apply([], (function() {
+        var _j, _len1, _results;
+        _results = [];
+        for (_j = 0, _len1 = actionList.length; _j < _len1; _j++) {
+          action = actionList[_j];
+          _results.push((function() {
+            var _results1;
+            _results1 = [];
+            for (prop in action) {
+              value = action[prop];
+              if (prop !== 'drone') {
+                _results1.push({
+                  drone: action.drone,
+                  type: prop,
+                  value: value
+                });
+              }
+            }
+            return _results1;
+          })());
+        }
+        return _results;
+      })());
+      actionAtoms.sortByValue((function(_this) {
+        return function(e) {
+          return _this.actionPrecedence[e.type];
+        };
+      })(this));
+      _results = [];
+      for (_j = 0, _len1 = actionAtoms.length; _j < _len1; _j++) {
+        atom = actionAtoms[_j];
+        switch (atom.type) {
+          case 'digTile':
+            _results.push(this.map.setTile(atom.value.x, atom.value.y, {
+              tileIDName: 'stoneBackground',
+              tileContentName: 'sky'
+            }));
+            break;
+          case 'rotate':
+            _results.push(atom.drone.rotate(atom.value.direction));
+            break;
+          case 'move':
+            _results.push(this.moveEntity(atom.drone, atom.value.x, atom.value.y));
+            break;
+          case 'sendModule':
+            drone = atom.drone;
+            tile = this.map.getTile(drone.x + drone.direction.x, drone.y + drone.direction.y);
+            _results.push(tile.entities.forEach(function(ent) {
+              if (ent instanceof Drone) {
+                return ent.modules[atom.value] = drone.modules[atom.value];
+              }
+            }));
+            break;
+          default:
+            _results.push(void 0);
+        }
       }
       return _results;
     };
 
-    World.prototype.map = null;
+    World.prototype.moveEntity = function(entity, newX, newY) {
+      this.map.getEntitiesList(entity.x, entity.y).remove(entity);
+      this.map.getEntitiesList(newX, newY).push(entity);
+      entity.x = newX;
+      return entity.y = newY;
+    };
 
     return World;
 
@@ -46,3 +115,5 @@
   window.World = World;
 
 }).call(this);
+
+//# sourceMappingURL=World.map

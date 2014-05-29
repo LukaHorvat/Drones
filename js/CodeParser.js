@@ -65,7 +65,7 @@
         node = ast[_i];
         code += tabs + node.code + '\n';
         if ((_ref = node.type) === 'conditional' || _ref === 'module declaration') {
-          _results.push(code += CodeParser.reconstructCode(node.instructions, tabs + '\t'));
+          _results.push(code += CodeParser.reconstructCode(node.instructions, tabs + '    '));
         } else {
           _results.push(void 0);
         }
@@ -83,12 +83,59 @@
           instructions = CodeParser.makeInstructions(node.instructions);
           cond = node.cond.split(' ');
           (function(instructions, cond) {
-            var name, operator, value;
-            if (cond[0] === 'see') {
-              return inst.execute = function(action, drone, map) {
-                var seenTile, subInstruction, _j, _len1, _results;
-                seenTile = map.getTile(drone.x + drone.direction.x, drone.y + drone.direction.y);
-                if (seenTile.tileContentName === cond[1]) {
+            var conditionFn, key, name, operator, value;
+            conditionFn = null;
+            switch (cond[0]) {
+              case 'see':
+                conditionFn = function(action, drone, map) {
+                  var seenTile;
+                  seenTile = map.getTile(drone.x + drone.direction.x, drone.y + drone.direction.y);
+                  return seenTile.tileContentName === cond[1];
+                };
+                break;
+              case 'memory':
+                name = cond[1];
+                operator = cond[2];
+                value = cond[3];
+                (function(value) {
+                  var getValue;
+                  getValue = null;
+                  if (!isNaN(value)) {
+                    value = +value;
+                    getValue = function() {
+                      return value;
+                    };
+                  } else {
+                    getValue = function(memory) {
+                      return memory[value] || 0;
+                    };
+                  }
+                  return (function(name, operator, getValue) {
+                    return conditionFn = function(action, drone, map) {
+                      var val;
+                      val = getValue(drone.memory);
+                      return (operator === 'not' && drone.memory[name] !== val) || (operator === 'is' && drone.memory[name] === val);
+                    };
+                  })(name, operator, getValue);
+                })(value);
+                break;
+              case 'input':
+                key = cond[1];
+                (function(key) {
+                  return conditionFn = function(action, drone, map, inputs) {
+                    return inputs.some(function(inp) {
+                      return inp === Phaser.Keyboard[key];
+                    });
+                  };
+                })(key);
+                break;
+              default:
+                throw "Unsupported condition " + cond[0];
+            }
+            return (function(conditionFn) {
+              return inst.execute = function(action, drone, map, inputs) {
+                var subInstruction, _j, _len1, _results;
+                if (conditionFn(action, drone, map, inputs)) {
                   _results = [];
                   for (_j = 0, _len1 = instructions.length; _j < _len1; _j++) {
                     subInstruction = instructions[_j];
@@ -97,47 +144,7 @@
                   return _results;
                 }
               };
-            } else if (cond[0] === 'memory') {
-              name = cond[1];
-              operator = cond[2];
-              value = cond[3];
-              return (function(value) {
-                var getValue;
-                getValue = null;
-                if (!isNaN(value)) {
-                  value = +value;
-                  getValue = function() {
-                    return value;
-                  };
-                } else {
-                  getValue = function(memory) {
-                    return memory[value] || 0;
-                  };
-                }
-                return (function(name, operator, getValue) {
-                  return inst.execute = function(action, drone, map) {
-                    var subInstruction, val, _j, _k, _len1, _len2, _results;
-                    val = getValue(drone.memory);
-                    if (operator === 'not' && drone.memory[name] !== val) {
-                      for (_j = 0, _len1 = instructions.length; _j < _len1; _j++) {
-                        subInstruction = instructions[_j];
-                        subInstruction.execute(action, drone, map);
-                      }
-                    }
-                    if (operator === 'is' && drone.memory[name] === val) {
-                      _results = [];
-                      for (_k = 0, _len2 = instructions.length; _k < _len2; _k++) {
-                        subInstruction = instructions[_k];
-                        _results.push(subInstruction.execute(action, drone, map));
-                      }
-                      return _results;
-                    }
-                  };
-                })(name, operator, getValue);
-              })(value);
-            } else {
-              throw "Unsupported condition " + cond[0];
-            }
+            })(conditionFn);
           })(instructions, cond);
         } else if (node.type === 'module declaration') {
           instructions = CodeParser.makeInstructions(node.instructions);
@@ -210,7 +217,15 @@
               name = action[1];
               (function(name) {
                 return inst.execute = function(action, drone, map) {
-                  return drone.setModule = name;
+                  return drone.activeModule = name;
+                };
+              })(name);
+              break;
+            case 'send_module':
+              name = action[1];
+              (function(name) {
+                return inst.execute = function(action, drone, map) {
+                  return action.sendModule = name;
                 };
               })(name);
               break;
@@ -275,7 +290,7 @@
 
   window.CodeParser = CodeParser;
 
-  CodeParser.testCode = 'set sawDirt 0\nif see dirt\n    dig forward\n    set sawDirt 1\n    set count 0\nif memory sawDirt not 1\n    increment count\n    rotate cw\n    if memory count is 4\n        dig forward\n        set count 0';
+  CodeParser.testCode = 'if input A\n    rotate ccw\nif input D\n    rotate cw\nif input W\n    dig forward';
 
 
   /*
@@ -300,3 +315,5 @@
    */
 
 }).call(this);
+
+//# sourceMappingURL=CodeParser.map

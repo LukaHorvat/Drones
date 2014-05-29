@@ -27,6 +27,22 @@ class Tests
 
             @expectEquality f(g 5), ((f.compose g) 5), 'composition with argument 5'
 
+            arr = ['apple', 'orange', 'pear']
+            arr.sortByValue (el) ->
+                {
+                    apple: 2
+                    orange: 1
+                    pear: 3
+                }[el]
+            @expectEquality 'orange', arr[0], 'first element'
+            @expectEquality 'apple', arr[1], 'second element'
+
+            arr2 = ['one', 'two', 'one', 'three']
+            arr2.remove 'one'
+            @expectEquality 'two', arr2[0], 'first element'
+            @expectEquality 'three', arr2[1], 'second element'
+
+
         test 'Parsing into AST', ->
             code = '''
             set var 1
@@ -90,12 +106,11 @@ class Tests
             '''
 
             map = WorldGenerator.makeEmptyMap(3, 3)
-            drone = new Drone(map)
-            drone.x = 1
-            drone.y = 1
+            world = new World map
+            drone = world.addDrone 1, 1
             drone.loadCode code
             for i in [1..7]
-                drone.tick()
+                world.tick()
 
             @expectEquality 2, drone.x, 'x coordinate'
             @expectEquality 2, drone.y, 'y coordinate'
@@ -129,13 +144,13 @@ class Tests
             set_module rotate_ccw
             '''
 
-            map = WorldGenerator.makeEmptyMap 5, 1
-            drone = new Drone(map)
+            map = WorldGenerator.makeEmptyMap 6, 1
+            world = new World map
+            drone = world.addDrone 4, 0
             drone.loadCode code
             drone.rotate 'cw'
-            drone.x = 4
             for i in [1..14]
-                drone.tick()
+                world.tick()
 
             @expectEquality 5, drone.x, 'x coordinate'
 
@@ -160,12 +175,11 @@ class Tests
             map.setTile 1, 0, 
                 tileIDName: 'dirt'
                 tileContentName: 'dirt'
-            drone = new Drone(map)
-            drone.x = 1
-            drone.y = 1
+            world = new World map 
+            drone = world.addDrone 1, 1
             drone.loadCode code
             for i in [1..6]
-                drone.tick()
+                world.tick()
 
             @expectEquality 2, drone.memory.count, 'dirt sightings'
 

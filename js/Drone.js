@@ -8,11 +8,10 @@
       function Drone(map) {
         this.rotate = __bind(this.rotate, this);
         this.destroy = __bind(this.destroy, this);
-        this.setModule = __bind(this.setModule, this);
+        this.activeModule = __bind(this.activeModule, this);
         this.loadModule = __bind(this.loadModule, this);
         this.loadCode = __bind(this.loadCode, this);
         this.execute = __bind(this.execute, this);
-        this.tick = __bind(this.tick, this);
         this.map = map;
         this.name = NameGenerator.generate();
         this.sprite = game.add.sprite(8, 8, 'drone');
@@ -30,37 +29,28 @@
         };
         this.memory = {};
         this.modules = {};
-        this.setModule = 'none';
+        this.activeModule = 'none';
       }
 
-      Drone.prototype.tick = function() {
-        return this.execute();
+      Drone.prototype.tick = function(actionList, inputs) {
+        return this.execute(actionList, inputs);
       };
 
-      Drone.prototype.execute = function() {
+      Drone.prototype.execute = function(actionList, inputs) {
         var action, inst, instructions, _i, _len;
-        if (this.setModule !== 'none') {
-          instructions = this.modules[this.setModule].instructions;
+        if (this.activeModule !== 'none') {
+          instructions = this.modules[this.activeModule].instructions;
         } else {
           return;
         }
         action = {};
+        action.drone = this;
         for (_i = 0, _len = instructions.length; _i < _len; _i++) {
           inst = instructions[_i];
-          inst.execute(action, this, this.map);
+          inst.execute(action, this, this.map, inputs);
         }
-        if ('digTile' in action) {
-          this.map.setTile(action.digTile.x, action.digTile.y, {
-            tileIDName: 'stoneBackground',
-            tileContentName: 'sky'
-          });
-        }
-        if ('rotate' in action) {
-          this.rotate(action.rotate.direction);
-        }
-        if ('move' in action) {
-          this.x = action.move.x;
-          return this.y = action.move.y;
+        if (actionList != null) {
+          return actionList.push(action);
         }
       };
 
@@ -71,7 +61,7 @@
           name: 'immediate',
           instructions: CodeParser.compileCode(code)
         };
-        this.setModule = module.name;
+        this.activeModule = module.name;
         return this.modules[module.name] = module;
       };
 
@@ -79,8 +69,8 @@
         return this.modules[module.name] = module;
       };
 
-      Drone.prototype.setModule = function(name) {
-        return this.setModule = name;
+      Drone.prototype.activeModule = function(name) {
+        return this.activeModule = name;
       };
 
       Drone.prototype.destroy = function() {
@@ -128,3 +118,5 @@
   })();
 
 }).call(this);
+
+//# sourceMappingURL=Drone.map

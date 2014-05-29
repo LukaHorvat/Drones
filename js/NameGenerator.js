@@ -23,3 +23,5 @@
   window.NameGenerator = NameGenerator;
 
 }).call(this);
+
+//# sourceMappingURL=NameGenerator.map

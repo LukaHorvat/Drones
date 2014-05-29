@@ -17,40 +17,33 @@ do ->
                 y: -1
             @memory = {}
             @modules = {}
-            @setModule = 'none'
+            @activeModule = 'none'
 
-        tick: () => @execute()
+        tick: (actionList, inputs) -> @execute actionList, inputs
 
-        execute: () =>
-            unless @setModule is 'none'
-                instructions = @modules[@setModule].instructions
+        execute: (actionList, inputs) =>
+            unless @activeModule is 'none'
+                instructions = @modules[@activeModule].instructions
             else return
             action = {}
+            action.drone = this
             for inst in instructions
-                inst.execute action, this, @map
-            if 'digTile' of action
-                @map.setTile action.digTile.x, action.digTile.y, 
-                    tileIDName: 'stoneBackground'
-                    tileContentName: 'sky'
-            if 'rotate' of action
-                @rotate action.rotate.direction
-            if 'move' of action
-                @x = action.move.x
-                @y = action.move.y
+                inst.execute action, this, @map, inputs
+            actionList.push action if actionList?
 
         loadCode: (code) =>
             module = 
                 code: code
                 name: 'immediate'
                 instructions: CodeParser.compileCode code
-            @setModule = module.name
+            @activeModule = module.name
             @modules[module.name] = module
 
         loadModule: (module) =>
             @modules[module.name] = module
 
-        setModule: (name) =>
-            @setModule = name
+        activeModule: (name) =>
+            @activeModule = name
 
         destroy: () =>
             sprite.destroy()
